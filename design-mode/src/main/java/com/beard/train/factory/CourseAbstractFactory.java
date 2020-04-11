@@ -1,7 +1,9 @@
 package com.beard.train.factory;
 
 /**
- * 抽象工厂 产品族 一系列的相关产品整合到一起有关联行 产品等级 相同的产品标准
+ * 抽象工厂 复制产品的工厂
+ * <p>
+ * 产品族 一系列的相关产品整合到一起有关联行 产品等级 相同的产品标准
  */
 public abstract class CourseAbstractFactory {
 
