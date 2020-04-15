@@ -13,7 +13,7 @@ public class LazySimpleSingleton {
         if (Objects.isNull(singleton)) {
             synchronized (LazySimpleSingleton.class) {
                 if (Objects.isNull(singleton)) {
-                    return new LazySimpleSingleton();
+                    singleton = new LazySimpleSingleton();
                 }
             }
         }
