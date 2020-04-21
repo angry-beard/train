@@ -2,9 +2,7 @@ package com.beard.train.proxy.myproxy;
 
 import com.beard.train.proxy.IPerson;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 
 public class MyMeiPo implements MyInvocationHandler {
 
