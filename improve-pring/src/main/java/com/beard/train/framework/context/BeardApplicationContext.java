@@ -91,6 +91,7 @@ public class BeardApplicationContext extends BeardDefaultListableBeanFactory imp
             String autowiredBeanName = beardAutowired.value().trim();
             if ("".equals(autowiredBeanName)) {
                 autowiredBeanName = field.getType().getName();
+                autowiredBeanName = toLowerFirstCase(autowiredBeanName.substring(autowiredBeanName.lastIndexOf(".") + 1));
             }
             field.setAccessible(true);
             try {
@@ -165,5 +166,11 @@ public class BeardApplicationContext extends BeardDefaultListableBeanFactory imp
         List<BeardBeanDefinition> beanDefinitions = reader.loadBeanDefinition();
         doRegisterBeanDefinition(beanDefinitions);
         doAutowired();
+    }
+
+    private String toLowerFirstCase(String simpleName) {
+        char[] chars = simpleName.toCharArray();
+        chars[0] += 32;
+        return String.valueOf(chars);
     }
 }
