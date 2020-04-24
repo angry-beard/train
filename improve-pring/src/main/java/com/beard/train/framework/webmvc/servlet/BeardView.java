@@ -27,7 +27,7 @@ public class BeardView {
             Matcher matcher = pattern.matcher(line);
             while (matcher.find()) {
                 String paramName = matcher.group();
-                paramName = paramName.replaceAll("￥\\{\\}", "");
+                paramName = paramName.replaceAll("￥\\{|\\}", "");
                 Object paramValue = model.get(paramName);
                 if (null == paramValue) {
                     continue;
@@ -43,21 +43,13 @@ public class BeardView {
     }
 
     private String makeStringForRegExp(String str) {
-        return str.replace("\\", "\\\\")
-                .replaceAll("\\*", "\\\\*")
-                .replaceAll("\\+", "\\\\+")
-                .replaceAll("\\|", "\\\\|")
-                .replaceAll("\\{", "\\\\{")
-                .replaceAll("\\}", "\\\\}")
-                .replaceAll("\\(", "\\\\(")
-                .replaceAll("\\)", "\\\\)")
-                .replaceAll("\\^", "\\\\^")
-                .replaceAll("\\[", "\\\\[")
-                .replaceAll("\\]", "\\\\]")
-                .replaceAll("\\?", "\\\\?")
-                .replaceAll("\\.", "\\\\.")
-                .replaceAll("\\,", "\\\\,")
-                .replaceAll("\\&", "\\\\&")
-                .replaceAll("\\$", "\\\\$");
+        return str.replace("\\", "\\\\").replace("*", "\\*")
+                .replace("+", "\\+").replace("|", "\\|")
+                .replace("{", "\\{").replace("}", "\\}")
+                .replace("(", "\\(").replace(")", "\\)")
+                .replace("^", "\\^").replace("$", "\\$")
+                .replace("[", "\\[").replace("]", "\\]")
+                .replace("?", "\\?").replace(",", "\\,")
+                .replace(".", "\\.").replace("&", "\\&");
     }
 }
