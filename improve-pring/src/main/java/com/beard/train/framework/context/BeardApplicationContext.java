@@ -3,6 +3,9 @@ package com.beard.train.framework.context;
 import com.beard.train.framework.annotation.BeardAutowired;
 import com.beard.train.framework.annotation.BeardController;
 import com.beard.train.framework.annotation.BeardService;
+import com.beard.train.framework.aop.JdkDynamicAopProxy;
+import com.beard.train.framework.aop.config.BeardAopConfig;
+import com.beard.train.framework.aop.support.BeardAdvisedSupport;
 import com.beard.train.framework.beans.BeardBeanWrapper;
 import com.beard.train.framework.beans.config.BeardBeanDefinition;
 import com.beard.train.framework.beans.support.BeardBeanDefinitionReader;
@@ -108,6 +111,15 @@ public class BeardApplicationContext {
             } else {
                 clazz = Class.forName(className);
                 instance = clazz.newInstance();
+
+                //如果满足条件，就直接返回Proxy对象
+                BeardAdvisedSupport config = instantionAopConfig(beanDefinition);
+                config.setTargetClass(clazz);
+                config.setTarget(instance);
+                if (config.pointCutMatch()) {
+                    instance = new JdkDynamicAopProxy(config).getProxy();
+                }
+
                 this.factoryBeanObjectCache.put(beanName, instance);
             }
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
@@ -115,6 +127,17 @@ public class BeardApplicationContext {
         }
 
         return instance;
+    }
+
+    private BeardAdvisedSupport instantionAopConfig(BeardBeanDefinition beanDefinition) {
+        BeardAopConfig aopConfig = new BeardAopConfig();
+        aopConfig.setPointCut(this.reader.getConfig().getProperty("pointCut"));
+        aopConfig.setAspectClass(this.reader.getConfig().getProperty("aspectClass"));
+        aopConfig.setAspectBefore(this.reader.getConfig().getProperty("aspectBefore"));
+        aopConfig.setAspectAfter(this.reader.getConfig().getProperty("aspectAfter"));
+        aopConfig.setAspectAfterThrow(this.reader.getConfig().getProperty("aspectAfterThrow"));
+        aopConfig.setAspectAfterThrowingName(this.reader.getConfig().getProperty("aspectAfterThrowingName"));
+        return new BeardAdvisedSupport(aopConfig);
     }
 
     public Object getBean(Class beanClass) {
