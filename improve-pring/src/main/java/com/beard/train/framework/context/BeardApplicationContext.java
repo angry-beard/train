@@ -8,74 +8,78 @@ import com.beard.train.framework.aop.config.BeardAopConfig;
 import com.beard.train.framework.aop.support.BeardAdvisedSupport;
 import com.beard.train.framework.beans.BeardBeanWrapper;
 import com.beard.train.framework.beans.config.BeardBeanDefinition;
+import com.beard.train.framework.beans.config.BeardBeanPostProcessor;
+import com.beard.train.framework.beans.factory.BeardFactoryBean;
 import com.beard.train.framework.beans.support.BeardBeanDefinitionReader;
+import com.beard.train.framework.context.factory.BeardDefaultListableBeanFactory;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 完成Bean的创建和DI
  */
-public class BeardApplicationContext {
+public class BeardApplicationContext extends BeardDefaultListableBeanFactory implements BeardFactoryBean {
 
 
     private BeardBeanDefinitionReader reader;
-    private Map<String, BeardBeanDefinition> beanDefinitionMap = new HashMap<>();
-    private Map<String, BeardBeanWrapper> factoryBeanInstanceCache = new HashMap<>();
+    private String[] configLocation;
     private Map<String, Object> factoryBeanObjectCache = new HashMap<>();
+    private Map<String, BeardBeanWrapper> factoryBeanInstanceCache = new ConcurrentHashMap<>();
 
     public BeardApplicationContext(String... configLocations) {
-        //1、加载配置文件
-        reader = new BeardBeanDefinitionReader(configLocations);
-        //2、解析配置文件，封装成BeanDefinition
-        List<BeardBeanDefinition> beanDefinitions = reader.loadBeanDefinition();
-        //3、把BeanDefinition缓存起来
+        this.configLocation = configLocations;
         try {
-            doRegisterBeanDefinition(beanDefinitions);
+            refresh();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        doAutowired();
     }
 
+
     private void doAutowired() {
-        for (Map.Entry<String, BeardBeanDefinition> beardBeanDefinitionEntry : this.beanDefinitionMap.entrySet()) {
+        for (Map.Entry<String, BeardBeanDefinition> beardBeanDefinitionEntry : super.beanDefinitionMap.entrySet()) {
             String beanName = beardBeanDefinitionEntry.getKey();
-            getBean(beanName);
+            if (!beardBeanDefinitionEntry.getValue().getLazyInit()) {
+                getBean(beanName);
+            }
         }
     }
 
 
     private void doRegisterBeanDefinition(List<BeardBeanDefinition> beanDefinitions) throws Exception {
         for (BeardBeanDefinition beanDefinition : beanDefinitions) {
-            if (beanDefinitionMap.containsKey(beanDefinition.getFactoryBeanName())) {
+            if (super.beanDefinitionMap.containsKey(beanDefinition.getFactoryBeanName())) {
                 throw new Exception("The " + beanDefinition.getFactoryBeanName() + " is exists!");
             }
-            beanDefinitionMap.put(beanDefinition.getFactoryBeanName(), beanDefinition);
-            beanDefinitionMap.put(beanDefinition.getBeanClassName(), beanDefinition);
+            super.beanDefinitionMap.put(beanDefinition.getFactoryBeanName(), beanDefinition);
         }
     }
 
     public Object getBean(String beanName) {
         //1、先拿到beanDefinition配置信息
-        BeardBeanDefinition beanDefinition = this.beanDefinitionMap.get(beanName);
+        BeardBeanDefinition beanDefinition = super.beanDefinitionMap.get(beanName);
+        BeardBeanPostProcessor postProcessor = new BeardBeanPostProcessor();
         //2、反射实例化
         Object instance = instantiateBean(beanName, beanDefinition);
+        if (Objects.isNull(instance)) {
+            return null;
+        }
+        postProcessor.postProcessBeforeInitialization(instance, beanName);
         //3、封装成BeanWrapper
         BeardBeanWrapper beanWrapper = new BeardBeanWrapper(instance);
         //4、保存到IoC容器
-        factoryBeanInstanceCache.put(beanName, beanWrapper);
+        this.factoryBeanInstanceCache.put(beanName, beanWrapper);
+
+        postProcessor.postProcessAfterInitialization(instance, beanName);
         //5、执行依赖注入
-        populateBean(beanName, beanDefinition, beanWrapper);
-        return beanWrapper.getWrapperInstance();
+        populateBean(beanName, instance);
+        return this.factoryBeanInstanceCache.get(beanName).getWrapperInstance();
     }
 
-    private void populateBean(String beanName, BeardBeanDefinition beanDefinition, BeardBeanWrapper beanWrapper) {
-        Object instance = beanWrapper.getWrapperInstance();
-        Class<?> clazz = beanWrapper.getWrappedClass();
+    private void populateBean(String beanName, Object instance) {
+        Class<?> clazz = instance.getClass();
         if (!(clazz.isAnnotationPresent(BeardController.class) || clazz.isAnnotationPresent(BeardService.class))) {
             return;
         }
@@ -102,12 +106,12 @@ public class BeardApplicationContext {
     }
 
     private Object instantiateBean(String beanName, BeardBeanDefinition beanDefinition) {
+        Object instance = null;
         String className = beanDefinition.getBeanClassName();
         Class<?> clazz;
-        Object instance = null;
         try {
-            if (this.factoryBeanObjectCache.containsKey(beanName)) {
-                instance = this.factoryBeanObjectCache.get(beanName);
+            if (this.factoryBeanObjectCache.containsKey(className)) {
+                instance = this.factoryBeanObjectCache.get(className);
             } else {
                 clazz = Class.forName(className);
                 instance = clazz.newInstance();
@@ -145,14 +149,21 @@ public class BeardApplicationContext {
     }
 
     public int getBeanDefinitionCount() {
-        return beanDefinitionMap.size();
+        return super.beanDefinitionMap.size();
     }
 
-    public String[] getBeanDefinitionNames() {
-        return beanDefinitionMap.entrySet().toArray(new String[this.beanDefinitionMap.size()]);
+    public Set<String> getBeanDefinitionNames() {
+        return super.beanDefinitionMap.keySet();
     }
 
     public Properties getConfig() {
         return this.reader.getConfig();
+    }
+
+    public void refresh() throws Exception {
+        reader = new BeardBeanDefinitionReader(this.configLocation);
+        List<BeardBeanDefinition> beanDefinitions = reader.loadBeanDefinition();
+        doRegisterBeanDefinition(beanDefinitions);
+        doAutowired();
     }
 }

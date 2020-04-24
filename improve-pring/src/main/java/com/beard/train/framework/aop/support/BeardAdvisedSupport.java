@@ -41,7 +41,7 @@ public class BeardAdvisedSupport {
         //2、类名
         //3、方法的名称和形参列表
         String pointCutForClassRegex = pointCut.substring(0, pointCut.lastIndexOf("\\(") - 4);
-        pointCutClassPattern = Pattern.compile("class " + pointCutForClassRegex.substring(pointCutForClassRegex.lastIndexOf("" + 1)));
+        pointCutClassPattern = Pattern.compile("class" + pointCutForClassRegex.substring(pointCutForClassRegex.lastIndexOf(" ") + 1));
         methodCache = new HashMap<>();
         Pattern pointCutPattern = Pattern.compile(pointCut);
         try {

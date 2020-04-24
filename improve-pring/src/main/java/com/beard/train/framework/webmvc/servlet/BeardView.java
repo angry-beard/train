@@ -23,13 +23,16 @@ public class BeardView {
         String line = null;
         while (null != (line = ra.readLine())) {
             line = new String(line.getBytes("ISO-8859-1"), "utf-8");
-            Pattern pattern = Pattern.compile("$\\{[^\\}]+\\}", Pattern.CASE_INSENSITIVE);
+            Pattern pattern = Pattern.compile("￥\\{[^\\}]+\\}", Pattern.CASE_INSENSITIVE);
             Matcher matcher = pattern.matcher(line);
             while (matcher.find()) {
                 String paramName = matcher.group();
-                paramName = paramName.replaceAll("$\\{\\}", "");
+                paramName = paramName.replaceAll("￥\\{\\}", "");
                 Object paramValue = model.get(paramName);
-                line = paramValue.toString();
+                if (null == paramValue) {
+                    continue;
+                }
+                line = matcher.replaceFirst(makeStringForRegExp(paramValue.toString()));
                 matcher = pattern.matcher(line);
             }
             sb.append(line);
@@ -37,5 +40,24 @@ public class BeardView {
         response.setCharacterEncoding("utf-8");
         response.getWriter().write(sb.toString());
 
+    }
+
+    private String makeStringForRegExp(String str) {
+        return str.replace("\\", "\\\\")
+                .replaceAll("\\*", "\\\\*")
+                .replaceAll("\\+", "\\\\+")
+                .replaceAll("\\|", "\\\\|")
+                .replaceAll("\\{", "\\\\{")
+                .replaceAll("\\}", "\\\\}")
+                .replaceAll("\\(", "\\\\(")
+                .replaceAll("\\)", "\\\\)")
+                .replaceAll("\\^", "\\\\^")
+                .replaceAll("\\[", "\\\\[")
+                .replaceAll("\\]", "\\\\]")
+                .replaceAll("\\?", "\\\\?")
+                .replaceAll("\\.", "\\\\.")
+                .replaceAll("\\,", "\\\\,")
+                .replaceAll("\\&", "\\\\&")
+                .replaceAll("\\$", "\\\\$");
     }
 }

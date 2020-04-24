@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BeardBeanDefinition {
 
+    private Boolean lazyInit;
     private String factoryBeanName;
     private String beanClassName;
 }

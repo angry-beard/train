@@ -40,9 +40,9 @@ public class BeardHandlerAdapter {
         Map<String, String[]> params = request.getParameterMap();
         Object[] paramValues = new Object[paramTypes.length];
         for (Map.Entry<String, String[]> param : params.entrySet()) {
-            String value = Arrays.toString(params.get(param.getKey()))
+            String value = Arrays.toString(param.getValue())
                     .replaceAll("\\[|\\]", "")
-                    .replaceAll("\\s+", ",");
+                    .replaceAll("\\s", ",");
             if (!paramIndexMapping.containsKey(param.getKey())) {
                 continue;
             }
@@ -80,5 +80,9 @@ public class BeardHandlerAdapter {
             return value;
         }
         return null;
+    }
+
+    public boolean supports(Object handlerMapping) {
+        return handlerMapping instanceof BeardHandlerMapping;
     }
 }

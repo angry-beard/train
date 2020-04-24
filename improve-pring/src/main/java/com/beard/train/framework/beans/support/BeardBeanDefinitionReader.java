@@ -13,41 +13,57 @@ import java.util.Properties;
 
 public class BeardBeanDefinitionReader {
 
-    private Properties contextConfig = new Properties();
-    private List<String> classNames = new ArrayList<>();
+    private Properties config = new Properties();
+    private List<String> registryBeanClasses = new ArrayList<>();
 
-    public BeardBeanDefinitionReader(String... configLocations) {
-        doLoadConfig(configLocations[0]);
+    public BeardBeanDefinitionReader(String... locations) {
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream(locations[0].replaceAll("classpath:", ""));
+        try {
+            config.load(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (Objects.nonNull(is)) {
+                try {
+                    is.close();
+                } catch (IOException ignore) {
+                }
+            }
+        }
         //扫描配置文件中相关的类
-        doScanner(contextConfig.getProperty("scanPackage"));
+        doScanner(config.getProperty("scanPackage"));
 
     }
 
     public Properties getConfig() {
-        return this.contextConfig;
+        return this.config;
     }
 
     public List<BeardBeanDefinition> loadBeanDefinition() {
         List<BeardBeanDefinition> result = new ArrayList<>();
         try {
-            for (String className : classNames) {
+            for (String className : registryBeanClasses) {
                 Class<?> beanClass = Class.forName(className);
+                if (beanClass.isInterface()) {
+                    continue;
+                }
                 //保存类对应的ClassName(全类名) 还有beanName
                 result.add(BeardBeanDefinition.builder()
                         .factoryBeanName(toLowerFirstCase(beanClass.getSimpleName()))
                         .beanClassName(beanClass.getName())
+                        .lazyInit(false)
                         .build());
                 for (Class<?> i : beanClass.getInterfaces()) {
                     result.add(BeardBeanDefinition.builder()
                             .factoryBeanName(toLowerFirstCase(i.getSimpleName()))
-                            .beanClassName(i.getName())
+                            .beanClassName(beanClass.getName())
+                            .lazyInit(false)
                             .build());
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return result;
     }
 
@@ -63,23 +79,7 @@ public class BeardBeanDefinitionReader {
                     continue;
                 }
                 String clazzName = (scanPackage + "." + file.getName().replaceAll(".class", ""));
-                classNames.add(clazzName);
-            }
-        }
-    }
-
-    private void doLoadConfig(String contextConfigLocation) {
-        InputStream fis = this.getClass().getClassLoader().getResourceAsStream(contextConfigLocation.replaceAll("classpath:", ""));
-        try {
-            contextConfig.load(fis);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (Objects.nonNull(fis)) {
-                try {
-                    fis.close();
-                } catch (IOException ignore) {
-                }
+                registryBeanClasses.add(clazzName);
             }
         }
     }

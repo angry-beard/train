@@ -6,6 +6,7 @@ public class BeardViewResolver {
 
     private final String DEFAULT_TEMPLATE_SUFFIX = ".html";
     private File templateRootDir;
+    private String viewName;
 
     public BeardViewResolver(String templateRoot) {
         String templateRootPath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
@@ -13,6 +14,7 @@ public class BeardViewResolver {
     }
 
     public BeardView resolveViewName(String viewName) {
+        this.viewName = viewName;
         if (null == viewName || "".equals(viewName.trim())) {
             return null;
         }

@@ -2,6 +2,7 @@ package com.beard.train.framework.webmvc.servlet;
 
 import com.beard.train.framework.annotation.*;
 import com.beard.train.framework.context.BeardApplicationContext;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServlet;
@@ -17,20 +18,20 @@ import java.util.regex.Pattern;
 /**
  * 负责任务调度 请求分发
  */
+@Slf4j
 public class BeardDispatcherServlet extends HttpServlet {
 
-    private BeardApplicationContext applicationContext;
     private List<BeardHandlerMapping> handlerMappings = new ArrayList<>();
     private Map<BeardHandlerMapping, BeardHandlerAdapter> handlerAdapterMap = new HashMap<>();
     private List<BeardViewResolver> viewResolvers = new ArrayList<>();
 
 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
         try {
             this.doDispatch(request, response);
         } catch (Exception e) {
             try {
-                processDispatchResult(request, response, BeardModelAndView.builder().viewName("500").build());
+                response.getWriter().write("500 Exception,Detail : " + Arrays.toString(e.getStackTrace()));
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -57,7 +58,11 @@ public class BeardDispatcherServlet extends HttpServlet {
         if (this.handlerAdapterMap.isEmpty()) {
             return null;
         }
-        return this.handlerAdapterMap.get(handlerMapping);
+        BeardHandlerAdapter adapter = this.handlerAdapterMap.get(handlerMapping);
+        if (adapter.supports(handlerMapping)) {
+            return adapter;
+        }
+        return null;
     }
 
     private void processDispatchResult(HttpServletRequest request, HttpServletResponse response, BeardModelAndView modelAndView) throws Exception {
@@ -93,8 +98,7 @@ public class BeardDispatcherServlet extends HttpServlet {
 
     public void init(ServletConfig config) {
         //初始化Spring 的核心api
-        applicationContext = new BeardApplicationContext(config.getInitParameter("contextConfigLocation"));
-        initStrategies(applicationContext);
+        initStrategies(new BeardApplicationContext(config.getInitParameter("contextConfigLocation")));
         System.out.println("angry beard spring framework is init.");
     }
 
@@ -108,7 +112,7 @@ public class BeardDispatcherServlet extends HttpServlet {
         String templateRoot = context.getConfig().getProperty("templateRoot");
         String templateRootPath = this.getClass().getClassLoader().getResource(templateRoot).getFile();
         File templateRootDir = new File(templateRootPath);
-        for (File file : templateRootDir.listFiles()) {
+        for (File template : templateRootDir.listFiles()) {
             this.viewResolvers.add(new BeardViewResolver(templateRoot));
         }
     }
@@ -124,8 +128,8 @@ public class BeardDispatcherServlet extends HttpServlet {
             return;
         }
         for (String beanName : context.getBeanDefinitionNames()) {
-            Object instance = context.getBean(beanName);
-            Class<?> clazz = context.getBean(beanName).getClass();
+            Object controller = context.getBean(beanName);
+            Class<?> clazz = controller.getClass();
             if (!clazz.isAnnotationPresent(BeardController.class)) {
                 continue;
             }
@@ -139,14 +143,14 @@ public class BeardDispatcherServlet extends HttpServlet {
                     continue;
                 }
                 BeardRequestMapping beardRequestMapping = method.getAnnotation(BeardRequestMapping.class);
-                String regex = ("/" + baseUrl + "/" + beardRequestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
+                String regex = ("/" + baseUrl + beardRequestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
                 Pattern pattern = Pattern.compile(regex);
                 handlerMappings.add(BeardHandlerMapping.builder()
-                        .controller(instance)
+                        .controller(controller)
                         .method(method)
                         .pattern(pattern)
                         .build());
-                System.out.println("Mapped: " + regex + "," + method);
+                log.info("Mapped: " + regex + "," + method);
             }
         }
     }
