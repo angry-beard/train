@@ -1,15 +1,14 @@
 package com.beard.train.framework.aop;
 
-import com.beard.train.framework.aop.aspect.BeardAdvice;
+import com.beard.train.framework.aop.intercept.BeardMethodInvocation;
 import com.beard.train.framework.aop.support.BeardAdvisedSupport;
 
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.Map;
+import java.util.List;
 
-public class JdkDynamicAopProxy implements InvocationHandler {
+public class JdkDynamicAopProxy implements BeardAopProxy, InvocationHandler {
 
     private BeardAdvisedSupport config;
 
@@ -19,31 +18,18 @@ public class JdkDynamicAopProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        Map<String, BeardAdvice> advices = config.getAdvices(method, null);
-        Object returnValue;
-        try {
-            invokeAdvice(advices.get("before"));
-
-            returnValue = method.invoke(this.config.getTarget(), args);
-
-            invokeAdvice(advices.get("after"));
-
-        } catch (Exception e) {
-            invokeAdvice(advices.get("afterThrow"));
-            throw e;
-        }
-        return returnValue;
-    }
-
-    private void invokeAdvice(BeardAdvice advice) {
-        try {
-            advice.getAdviceMethod().invoke(advice.getAspect());
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
+        List<Object> advices = config.getInterceptorsAndDynamicInterceptionAdvice(method, this.config.getTargetClass());
+        BeardMethodInvocation methodInvocation = new BeardMethodInvocation(proxy, this.config.getTarget(), method, args, this.config.getTargetClass(), advices);
+        return methodInvocation.proceed();
     }
 
     public Object getProxy() {
-        return Proxy.newProxyInstance(this.getClass().getClassLoader(), this.config.getTargetClass().getInterfaces(), this);
+        return getProxy(this.getClass().getClassLoader());
+
+    }
+
+    @Override
+    public Object getProxy(ClassLoader classLoader) {
+        return Proxy.newProxyInstance(classLoader, this.config.getTargetClass().getInterfaces(), this);
     }
 }

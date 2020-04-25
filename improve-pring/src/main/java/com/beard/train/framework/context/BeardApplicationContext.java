@@ -127,7 +127,7 @@ public class BeardApplicationContext extends BeardDefaultListableBeanFactory imp
 
                 this.factoryBeanObjectCache.put(beanName, instance);
             }
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
 
