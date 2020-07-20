@@ -20,8 +20,10 @@ public class MyProducer {
         factory.setPassword("guest");
         Connection connection = factory.newConnection();
         Channel channel = connection.createChannel();
-        String msg = "hello world,Rabbit MQ!";
-        channel.basicPublish(EXCHANGE_NAME, "com.angry.beard.best", null, msg.getBytes());
+        for (int i = 0; i < 100; i++) {
+            String msg = "hello world,Rabbit MQ! i=" + i;
+            channel.basicPublish(EXCHANGE_NAME, "com.angry.beard.best", null, msg.getBytes());
+        }
         channel.close();
         connection.close();
     }
